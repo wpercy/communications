@@ -1,0 +1,3 @@
+[submodule "txtr"]
+    path = txtr
+    url = https://github.com/wpercy/txtr
