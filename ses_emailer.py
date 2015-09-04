@@ -7,10 +7,21 @@ def get_recipients_from_csv(filename):
         return [ r for r in reader ]
 
 def send_mass_email(**kwargs):
-    # ses client params
-    aws_key = kwargs['aws_access_key_id']
-    secret_key = kwargs['aws_secret_access_key']
-    region = kwargs['region_name']
+    # ses client params -- if they exist, pass directly to client constructor
+    if 'aws_access_key_id' in kwargs:
+        aws_key = kwargs['aws_access_key_id']
+        secret_key = kwargs['aws_secret_access_key']
+        region = kwargs['region_name']
+        client = boto3.client(
+                              'ses',
+                              aws_access_key_id=aws_key,
+                              aws_secret_access_key=secret_key,
+                              region_name=region
+                            )
+    # else, we're getting them from our aws config on the local machine
+    else:
+        client = boto3.client('ses')
+
     # email data
     sender = kwargs['sender']
     subject = kwargs['subject']
@@ -22,13 +33,6 @@ def send_mass_email(**kwargs):
         recipient_data = get_recipients_from_csv(kwargs['csv'])
     else:
         recipient_data = kwargs['recipient_data']
-
-    client = boto3.client(
-                          'ses',
-                          aws_access_key_id=aws_key,
-                          aws_secret_access_key=secret_key,
-                          region_name=region
-                        )
 
     # send a unique email to each recipient because things will change per recipient
     for r in recipient_data:
