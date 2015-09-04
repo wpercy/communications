@@ -14,12 +14,14 @@ def send_mass_email(**kwargs):
     recipients = get_recipients(kwargs['csv_filename'])
 
     # basically token replacement 
-    html_content = kwargs['html_text'] % kwargs['html_placeholders']
+    html_content = kwargs['html_text'] % tuple(kwargs['html_placeholders'])
 
-    client = boto3.client('ses',
+    client = boto3.client(
+                          'ses',
                           aws_access_key_id=aws_key,
                           aws_secret_access_key=secret_key,
-                          region_name=region)
+                          region_name=region
+                        )
 
     # send a unique email to each recipient because the name and url param will change every time
     for r in recipients:
