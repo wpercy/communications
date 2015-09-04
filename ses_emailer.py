@@ -1,7 +1,7 @@
 #! /usr/bin/python
 import boto3
 
-def get_recipients(filename):
+def get_recipients_from_csv(filename):
     with open(filename, 'rb') as f:
         reader = csv.DictReader(f)
         return [ r for r in reader ]
@@ -11,10 +11,11 @@ def send_mass_email(**kwargs):
     secret_key = kwargs['aws_secret_access_key']
     region = kwargs['region_name']
     sender = kwargs['sender']
-    recipients = get_recipients(kwargs['csv_filename'])
+    subject = kwargs['subject']
+    recipient_data = get_recipients_from_csv(kwargs['csv'])
 
     # basically token replacement 
-    html_content = kwargs['html_text'] % tuple(kwargs['html_placeholders'])
+    html = kwargs['html_text']
 
     client = boto3.client(
                           'ses',
@@ -23,7 +24,7 @@ def send_mass_email(**kwargs):
                           region_name=region
                         )
 
-    # send a unique email to each recipient because the name and url param will change every time
+    # send a unique email to each recipient because things will change per recipient
     for r in recipients:
         response = client.send_email(
                         Source=sender,
@@ -32,11 +33,11 @@ def send_mass_email(**kwargs):
                         },
                         Message={
                             'Subject': {
-                                'Data': 'SUBJECT LINE'
+                                'Data': subject
                             },
                             'Body': {
                                 'Html': {
-                                    'Data': html_content,
+                                    'Data': html.format(**r['html_placeholders']),
                                     'Charset': 'UTF-8'
                                 }
                             }
