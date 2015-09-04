@@ -7,15 +7,21 @@ def get_recipients_from_csv(filename):
         return [ r for r in reader ]
 
 def send_mass_email(**kwargs):
+    # ses client params
     aws_key = kwargs['aws_access_key_id']
     secret_key = kwargs['aws_secret_access_key']
     region = kwargs['region_name']
+    # email data
     sender = kwargs['sender']
     subject = kwargs['subject']
-    recipient_data = get_recipients_from_csv(kwargs['csv'])
-
-    # basically token replacement 
+    # can contain tokens for replacement like this: {token_name}
+    # 'token_name' must be a key in the recipient dicts below (r)
     html = kwargs['html_text']
+
+    if 'csv' in kwargs:
+        recipient_data = get_recipients_from_csv(kwargs['csv'])
+    else:
+        recipient_data = kwargs['recipient_data']
 
     client = boto3.client(
                           'ses',
@@ -25,7 +31,7 @@ def send_mass_email(**kwargs):
                         )
 
     # send a unique email to each recipient because things will change per recipient
-    for r in recipients:
+    for r in recipient_data:
         response = client.send_email(
                         Source=sender,
                         Destination={
@@ -45,4 +51,7 @@ def send_mass_email(**kwargs):
                     )
         if response['ResponseMetadata']['HTTPStatusCode'] != 200:
             # log the error somewhere
+
+def send_email(**kwargs):
+
 
