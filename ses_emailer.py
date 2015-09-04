@@ -37,7 +37,7 @@ def send_mass_email(**kwargs):
                             },
                             'Body': {
                                 'Html': {
-                                    'Data': html.format(**r['html_placeholders']),
+                                    'Data': html.format(**r),
                                     'Charset': 'UTF-8'
                                 }
                             }
