@@ -9,14 +9,11 @@ def get_recipients_from_csv(filename):
 def send_mass_email(**kwargs):
     # ses client params -- if they exist, pass directly to client constructor
     if 'aws_access_key_id' in kwargs:
-        aws_key = kwargs['aws_access_key_id']
-        secret_key = kwargs['aws_secret_access_key']
-        region = kwargs['region_name']
         client = boto3.client(
                               'ses',
-                              aws_access_key_id=aws_key,
-                              aws_secret_access_key=secret_key,
-                              region_name=region
+                              aws_access_key_id=kwargs['aws_access_key_id'],
+                              aws_secret_access_key=kwargs['aws_secret_access_key'],
+                              region_name=kwargs['region_name']
                             )
     # else, we're getting them from our aws config on the local machine
     else:
@@ -29,33 +26,41 @@ def send_mass_email(**kwargs):
     # 'token_name' must be a key in the recipient dicts below (r)
     html = kwargs['html_text']
 
-    if 'csv' in kwargs:
-        recipient_data = get_recipients_from_csv(kwargs['csv'])
-    else:
-        recipient_data = kwargs['recipient_data']
+    # one-liners are fun
+    recipient_data = get_recipients_from_csv(kwargs['csv']) if 'csv' in kwargs else kwargs['recipient_data']
 
-    # send a unique email to each recipient because things will change per recipient
-    for r in recipient_data:
-        response = client.send_email(
-                        Source=sender,
-                        Destination={
-                            'ToAddresses':[ r['Email'] ] # again, just the one recipient
-                        },
-                        Message={
-                            'Subject': {
-                                'Data': subject
+    format_string = False
+    # if we get a key error with no args, it means it's dynamic content for each recipient
+    try:
+        html.format()
+    except KeyError:
+        format_string = True
+
+    if format_string:
+        # send a unique email to each recipient because things will change per recipient
+        for r in recipient_data:
+            response = client.send_email(
+                            Source=sender,
+                            Destination={
+                                'ToAddresses':[ r['Email'] ]
                             },
-                            'Body': {
-                                'Html': {
-                                    'Data': html.format(**r),
-                                    'Charset': 'UTF-8'
+                            Message={
+                                'Subject': {
+                                    'Data': subject
+                                },
+                                'Body': {
+                                    'Html': {
+                                        'Data': html.format(**r),
+                                        'Charset': 'UTF-8'
+                                    }
                                 }
                             }
-                        }
-                    )
-        if response['ResponseMetadata']['HTTPStatusCode'] != 200:
-            # log the error somewhere
+                        )
+            if response['ResponseMetadata']['HTTPStatusCode'] != 200:
+                # log the error somewhere
+    else:
+        # EMAIL BLAST!!
 
-def send_email(**kwargs):
+# def send_email(**kwargs):
 
 
