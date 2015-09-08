@@ -1,5 +1,6 @@
 #! /usr/bin/python
 import boto3
+import datetime
 
 def get_recipients_from_csv(filename):
     with open(filename, 'rb') as f:
@@ -26,40 +27,33 @@ def send_mass_email(**kwargs):
     # 'token_name' must be a key in the recipient dicts below (r)
     html = kwargs['html_text']
 
-    # one-liners are fun
+    # one-liners are fun -- if we have a filename, get recipients from there, else from kwargs
     recipient_data = get_recipients_from_csv(kwargs['csv']) if 'csv' in kwargs else kwargs['recipient_data']
 
-    format_string = False
-    # if we get a key error with no args, it means it's dynamic content for each recipient
-    try:
-        html.format()
-    except KeyError:
-        format_string = True
-
-    if format_string:
-        # send a unique email to each recipient because things will change per recipient
-        for r in recipient_data:
-            response = client.send_email(
-                            Source=sender,
-                            Destination={
-                                'ToAddresses':[ r['Email'] ]
+    sent_emails = []
+    for r in recipient_data:
+        r['timestamp'] = datetime.datetime.now().__str__()
+        response = client.send_email(
+                        Source=sender,
+                        Destination={
+                            'ToAddresses':[ r['Email'] ]
+                        },
+                        Message={
+                            'Subject': {
+                                'Data': subject
                             },
-                            Message={
-                                'Subject': {
-                                    'Data': subject
-                                },
-                                'Body': {
-                                    'Html': {
-                                        'Data': html.format(**r),
-                                        'Charset': 'UTF-8'
-                                    }
+                            'Body': {
+                                'Html': {
+                                    'Data': html.format(**r),
+                                    'Charset': 'UTF-8'
                                 }
                             }
-                        )
-            if response['ResponseMetadata']['HTTPStatusCode'] != 200:
-                # log the error somewhere
-    else:
-        # EMAIL BLAST!!
+                        }
+                    )
+        sent_emails.append(r)
+        if response['ResponseMetadata']['HTTPStatusCode'] != 200:
+            # log the error somewhere
+            pass
 
 # def send_email(**kwargs):
 
