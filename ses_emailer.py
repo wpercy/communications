@@ -12,6 +12,8 @@ class SES_mailer:
                 self.aws_secret_access_key = credentials['aws_secret_access_key']
             except KeyError:
                 self.has_credentials = False # if neither access key is there, use local aws config
+        else:
+            self.has_credentials = False
 
     def send_mass_email(self, **kwargs):
         # ses client params -- if they exist, pass directly to client constructor
@@ -43,6 +45,7 @@ class SES_mailer:
         sent_emails = []
         bad_emails = []
         for r in recipient_data:
+            html_content = html.format(**r)
             r['timestamp'] = datetime.datetime.now().__str__()
             response = client.send_email(
                             Source=sender,
@@ -55,8 +58,7 @@ class SES_mailer:
                                 },
                                 'Body': {
                                     'Html': {
-                                        'Data': html.format(**r),
-                                        'Charset': 'UTF-8'
+                                        'Data': html_content
                                     }
                                 }
                             }
@@ -67,16 +69,17 @@ class SES_mailer:
 
         if 'logfile' in kwargs:
             with open(kwargs['logfile'], 'wb') as f:
-                writer = csv.DictWriter(f)
+                fieldnames = [ k for k in sent_emails[0].keys()]
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
                 writer.writeheader()
                 for s in sent_emails:
                     writer.writerow(s)
 
         return sent_emails
 
-    def get_recipients_from_csv(filename):
+    def get_recipients_from_csv(self, filename):
         with open(filename, 'rb') as f:
             reader = csv.DictReader(f)
-            return [ r for r in reader ]
+            return [ r for r in reader if r['UserID'] != '']
 
 
