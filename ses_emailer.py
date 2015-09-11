@@ -1,6 +1,6 @@
 #! /usr/bin/python
 import csv
-import boto3
+from boto3.session import Session
 import datetime
 
 class SES_mailer:
@@ -8,7 +8,7 @@ class SES_mailer:
         if credentials:
             try:
                 self.has_credentials = True
-                self.aws_access_key_id = credentials['aws_access_key_id'],
+                self.aws_access_key_id = credentials['aws_access_key_id']
                 self.aws_secret_access_key = credentials['aws_secret_access_key']
             except KeyError:
                 self.has_credentials = False # if neither access key is there, use local aws config
@@ -18,15 +18,19 @@ class SES_mailer:
     def send_mass_email(self, **kwargs):
         # ses client params -- if they exist, pass directly to client constructor
         if self.has_credentials:
-            client = boto3.client(
-                                  'ses',
-                                  aws_access_key_id=self.aws_access_key_id,
-                                  aws_secret_access_key=self.aws_secret_access_key,
-                                  region_name=kwargs['region_name']
+            session = Session(
+                            aws_access_key_id=self.aws_access_key_id,
+                            aws_secret_access_key=self.aws_secret_access_key,
+                            region_name=kwargs['region_name']
+                            )
+
+            client = session.client(
+                                  'ses'
                                 )
         # else, we're getting them from our aws config on the local machine
         else:
-            client = boto3.client('ses')
+            session = Session()
+            client = session.client('ses')
 
         # email data
         sender = kwargs['sender']
