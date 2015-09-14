@@ -23,10 +23,7 @@ class SES_mailer:
                             aws_secret_access_key=self.aws_secret_access_key,
                             region_name=kwargs['region_name']
                             )
-
-            client = session.client(
-                                  'ses'
-                                )
+            client = session.client('ses')
         # else, we're getting them from our aws config on the local machine
         else:
             session = Session()
