@@ -1,7 +1,11 @@
 #! /usr/bin/python
+from __future__ import division
+
 import csv
-from boto3.session import Session
 import datetime
+from boto3.session import Session
+
+
 
 class SES_mailer:
     def __init__(self, credentials=None):
@@ -45,38 +49,66 @@ class SES_mailer:
 
         sent_emails = []
         bad_emails = []
+        count = 0
+        total = len(recipient_data)
+
         for r in recipient_data:
-            html_content = html.format(**r)
-            r['timestamp'] = datetime.datetime.now().__str__()
-            response = client.send_email(
-                            Source=sender,
-                            Destination={
-                                'ToAddresses':[ r['Email'] ]
-                            },
-                            Message={
-                                'Subject': {
-                                    'Data': subject
+            try:
+                html_content = html.format(**r)
+                r['timestamp'] = datetime.datetime.now().__str__()
+                response = client.send_email(
+                                Source=sender,
+                                Destination={
+                                    'ToAddresses':[ r['Email'] ]
                                 },
-                                'Body': {
-                                    'Html': {
-                                        'Data': html_content
+                                Message={
+                                    'Subject': {
+                                        'Data': subject
+                                    },
+                                    'Body': {
+                                        'Html': {
+                                            'Data': html_content
+                                        }
                                     }
                                 }
-                            }
-                        )
-            sent_emails.append(r)
-            if response['ResponseMetadata']['HTTPStatusCode'] != 200:
+                            )
+                sent_emails.append(r)
+                if response['ResponseMetadata']['HTTPStatusCode'] != 200:
+                    r['error'] = response['ResponseMetadata']['HTTPStatusCode']
+                    bad_emails.append(r)
+
+                count = count + 1
+                if count % 1 == 0:
+                    print "{} EMAILS SENT OUT OF {}..{}% COMPLETE".format(count, total, (count/total * 100))
+
+            except Exception as e:
+                r['timestamp'] = datetime.datetime.now().__str__()
+                r['error'] = e
+                print "ERROR SENDING TO EMAIL ADDRESS: {Email} \n ERROR WAS: {error}".format(**r)
                 bad_emails.append(r)
+                count = count + 1
+                if count % 1 == 0:
+                    print "{} EMAILS SENT OUT OF {}..{}% COMPLETE".format(count, total, (count/total * 100))
 
         if 'logfile' in kwargs:
-            with open(kwargs['logfile'], 'wb') as f:
-                fieldnames = [ k for k in sent_emails[0].keys()]
-                writer = csv.DictWriter(f, fieldnames=fieldnames)
-                writer.writeheader()
-                for s in sent_emails:
-                    writer.writerow(s)
+            if len(sent_emails) > 0:
+                with open(kwargs['logfile'], 'wb') as f:
+                    fieldnames = [ k for k in sent_emails[0].keys()]
+                    writer = csv.DictWriter(f, fieldnames=fieldnames)
+                    writer.writeheader()
+                    for s in sent_emails:
+                        writer.writerow(s)
 
-        return sent_emails
+            if len(bad_emails) > 0:
+                errorlog = "ERRORS_" + kwargs['logfile']
+                with open(errorlog, 'wb') as f:
+                    fieldnames = [ k for k in bad_emails[0].keys()]
+                    writer = csv.DictWriter(f, fieldnames=fieldnames)
+                    writer.writeheader()
+                    for b in bad_emails:
+                        writer.writerow(b)
+
+        return sent_emails, bad_emails
 
     def get_recipients_from_csv(self, filename):
         with open(filename, 'rb') as f:
