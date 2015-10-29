@@ -1,2 +1,4 @@
 *.pyc
-aws_constants.py
+*constants.py
+*.txt
+.DS_Store
